@@ -68,7 +68,7 @@ flowchart LR
         Calculator["calculator.c<br/>Parser & Engine"]
     end
 
-    Terminal -->|UART over USB (115200 8N1)| UART
+    Terminal -->|"UART over USB (115200 8N1)"| UART
     Startup --> SystemInit --> Main
     Main -->|polls| UART
     Main -->|delegates input| Calculator
