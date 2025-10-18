@@ -59,13 +59,13 @@ The system uses the external 8 MHz crystal (HSE) with PLL to achieve 84 MHz oper
 
 ```mermaid
 flowchart LR
-    Terminal[Serial Terminal\n(User Interface)]
+    Terminal["Serial Terminal<br/>(User Interface)"]
     subgraph MCU[STM32F401RE MCU]
-        Startup[startup_stm32f401xe.c\nReset & Vectors]
-        SystemInit[system_stm32f4xx.c\nClock & System Init]
-        Main[main.c\nEvent Loop]
-        UART[uart.c\nUSART2 Driver]
-        Calculator[calculator.c\nParser & Engine]
+        Startup["startup_stm32f401xe.c<br/>Reset & Vectors"]
+        SystemInit["system_stm32f4xx.c<br/>Clock & System Init"]
+        Main["main.c<br/>Event Loop"]
+        UART["uart.c<br/>USART2 Driver"]
+        Calculator["calculator.c<br/>Parser & Engine"]
     end
 
     Terminal -->|UART over USB (115200 8N1)| UART
