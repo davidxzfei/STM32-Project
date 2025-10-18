@@ -55,6 +55,54 @@ The system uses the external 8 MHz crystal (HSE) with PLL to achieve 84 MHz oper
 
 ## Software Architecture
 
+### High-Level Design Diagram
+
+```mermaid
+flowchart LR
+    Terminal[Serial Terminal\n(User Interface)]
+    subgraph MCU[STM32F401RE MCU]
+        Startup[startup_stm32f401xe.c\nReset & Vectors]
+        SystemInit[system_stm32f4xx.c\nClock & System Init]
+        Main[main.c\nEvent Loop]
+        UART[uart.c\nUSART2 Driver]
+        Calculator[calculator.c\nParser & Engine]
+    end
+
+    Terminal -->|UART over USB (115200 8N1)| UART
+    Startup --> SystemInit --> Main
+    Main -->|polls| UART
+    Main -->|delegates input| Calculator
+    Calculator -->|formatted result| UART
+    UART -->|character echo & responses| Terminal
+```
+
+### Low-Level Design Diagram
+
+```mermaid
+sequenceDiagram
+    participant Terminal as Serial Terminal
+    participant USART as USART2 Peripheral
+    participant Driver as uart.c
+    participant Main as main.c Loop
+    participant Calc as calculator.c
+
+    Terminal->>USART: Key press
+    USART-->>Driver: RXNE flag set
+    Driver->>Main: UART2_DataAvailable()
+    Main->>Driver: UART2_ReceiveChar()
+    Main->>Driver: UART2_SendChar(ch) (echo)
+    Main->>Calc: Calculator_ProcessInput(ch)
+    Calc-->>Main: Buffering status
+
+    alt Enter received
+        Main->>Calc: Calculator_ProcessInput('\r')
+        Calc->>Calc: parse_and_calculate()
+        Calc->>Driver: UART2_SendString(result or error)
+        Driver->>Terminal: Result/Message
+        Calc->>Main: Reset buffer state
+    end
+```
+
 ### Module Structure
 
 ```
@@ -156,6 +204,68 @@ UART2_SendString() - uart.c
 UART2 Transmit (Hardware)
     ↓
 Display Result (Serial Terminal)
+```
+
+### Data Flow Diagram
+
+```mermaid
+flowchart TD
+    Start([User Input])
+    Receive[UART Receive Character]
+    Echo[Echo Character Back]
+    Check{Enter Key?}
+    Buffer[Append to Buffer]
+    Parse[Parse Expression]
+    Validate{Valid Format?}
+    OpCheck{Check Operator}
+    Add[Addition]
+    Sub[Subtraction]
+    Mul[Multiplication]
+    DivCheck{Divisor Zero?}
+    Div[Division]
+    FPU[FPU Calculate]
+    Format[Format Result]
+    ErrorFormat[Error: Invalid Input]
+    ErrorOp[Error: Unknown Operator]
+    ErrorDiv[Error: Division by Zero]
+    Send[Send via UART]
+    Clear[Clear Buffer]
+    Prompt[Show Prompt]
+    End([Ready])
+
+    Start --> Receive
+    Receive --> Echo
+    Echo --> Check
+    Check -->|No| Buffer
+    Buffer --> Receive
+    Check -->|Yes| Parse
+    Parse --> Validate
+    Validate -->|Invalid| ErrorFormat
+    Validate -->|Valid| OpCheck
+    OpCheck -->|+| Add
+    OpCheck -->|-| Sub
+    OpCheck -->|*, x| Mul
+    OpCheck -->|/| DivCheck
+    OpCheck -->|Unknown| ErrorOp
+    DivCheck -->|Yes| ErrorDiv
+    DivCheck -->|No| Div
+    Add --> FPU
+    Sub --> FPU
+    Mul --> FPU
+    Div --> FPU
+    FPU --> Format
+    Format --> Send
+    ErrorFormat --> Send
+    ErrorOp --> Send
+    ErrorDiv --> Send
+    Send --> Clear
+    Clear --> Prompt
+    Prompt --> End
+
+    style FPU fill:#90EE90
+    style ErrorFormat fill:#FF6B6B
+    style ErrorOp fill:#FF6B6B
+    style ErrorDiv fill:#FF6B6B
 ```
 
 ## User Interface
